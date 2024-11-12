@@ -11,31 +11,41 @@ class ChessUI {
     //chatgpt
     findLegalMoves(row, col) {
         const legalMoves = [];
-        // Check all possible board positions
+        const piece = this.game.board[row][col];
+        if (!piece) return [];
+
+        // Store original state
+        const originalCurrentPlayer = this.game.currentPlayer;
+        
+        // Check all possible positions
         for (let endRow = 0; endRow < 8; endRow++) {
             for (let endCol = 0; endCol < 8; endCol++) {
-                // Test if move is legal by simulating it
-                const startPos = [row, col];
-                const endPos = [endRow, endCol];
-                
-                // Store current board state
-                const originalPiece = this.game.board[endRow][endCol];
-                const movingPiece = this.game.board[row][col];
-                
-                // Try move
-                this.game.board[endRow][endCol] = movingPiece;
-                this.game.board[row][col] = null;
-                
-                // If move is valid and doesn't leave king in check
-                if (this.game.isValidMove(startPos, endPos) && !this.game.isInCheck(this.game.currentPlayer)) {
-                    legalMoves.push([endRow, endCol]);
+                // Skip current position
+                if (row === endRow && col === endCol) continue;
+
+                if (this.game.isValidMove([row, col], [endRow, endCol])) {
+                    // Store board state
+                    const originalEndSquare = this.game.board[endRow][endCol];
+                    
+                    // Try move
+                    this.game.board[endRow][endCol] = piece;
+                    this.game.board[row][col] = null;
+                    
+                    // Check if move leaves king in check
+                    if (!this.game.isInCheck(piece.color)) {
+                        legalMoves.push([endRow, endCol]);
+                    }
+                    
+                    // Restore board state
+                    this.game.board[row][col] = piece;
+                    this.game.board[endRow][endCol] = originalEndSquare;
                 }
-                
-                // Restore board state
-                this.game.board[row][col] = movingPiece;
-                this.game.board[endRow][endCol] = originalPiece;
             }
         }
+        
+        // Restore original state
+        this.game.currentPlayer = originalCurrentPlayer;
+        
         return legalMoves;
     }
     initializeHistory() {
@@ -165,21 +175,25 @@ class ChessUI {
                 cell.appendChild(img);
             }
             
-            //highlight square
+            //legal move indicators
+            if (this.legalMoves.length > 0) {
+                const isLegalMove = this.legalMoves.some(move => 
+                    move[0] === row && move[1] === col
+                );
+                
+                if (isLegalMove) {
+                    const indicator = document.createElement('div');
+                    indicator.className = piece ? 'capture-indicator' : 'move-indicator';
+                    cell.appendChild(indicator);
+                }
+            }
+            
+            //highlight selected cell
             if (this.selectedCell && this.selectedCell[0] === row && this.selectedCell[1] === col) {
                 cell.classList.add('selected');
             }
 
-            //highlight moves
-            if (this.legalMoves.some(move => move[0] === row && move[1] === col)) {
-                if (this.game.board[row][col]) {
-                    cell.classList.add('legal-capture'); // Different highlight for captures
-                } else {
-                    cell.classList.add('legal-move');
-                }
-            }
-
-            //highlight checks
+            //highlight king in check
             if (piece && piece.type === 'k' && this.game.isInCheck(piece.color)) {
                 cell.classList.add('in-check');
             }
