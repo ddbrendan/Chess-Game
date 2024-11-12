@@ -6,6 +6,7 @@ class ChessUI {
         this.legalMoves = [];
         this.createBoard();
         this.initializeHistory();
+        this.createNavigationControls();
     }
 
     //chatgpt
@@ -244,5 +245,57 @@ class ChessUI {
         checkAlert.textContent = 'Check!';
         document.body.appendChild(checkAlert);
         setTimeout(() => checkAlert.remove(), 2000);
+    }
+
+    createNavigationControls() {
+        const controls = document.createElement('div');
+        controls.className = 'navigation-controls';
+        
+        // Create navigation buttons
+        const buttons = [
+            { id: 'start', text: '⟨⟨', title: 'Start' },
+            { id: 'prev', text: '⟨', title: 'Previous' },
+            { id: 'next', text: '⟩', title: 'Next' },
+            { id: 'end', text: '⟩⟩', title: 'Current' }
+        ];
+    
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.id = `move-${btn.id}`;
+            button.textContent = btn.text;
+            button.title = btn.title;
+            button.addEventListener('click', () => this.navigateMove(btn.id));
+            controls.appendChild(button);
+        });
+    
+        // Insert after the chess board
+        this.container.parentNode.insertBefore(controls, this.container.nextSibling);
+    }
+    
+    navigateMove(action) {
+        let targetMove = this.game.currentMove;
+        
+        switch (action) {
+            case 'start':
+                targetMove = 0;
+                break;
+            case 'prev':
+                targetMove = Math.max(0, this.game.currentMove - 1);
+                break;
+            case 'next':
+                targetMove = Math.min(this.game.moveHistory.length, this.game.currentMove + 1);
+                break;
+            case 'end':
+                targetMove = this.game.moveHistory.length;
+                break;
+        }
+    
+        if (targetMove !== this.game.currentMove) {
+            this.game.goToMove(targetMove);
+            this.selectedCell = null;
+            this.legalMoves = [];
+            this.updateBoard();
+            this.updateMoveHistory();
+        }
     }
 }

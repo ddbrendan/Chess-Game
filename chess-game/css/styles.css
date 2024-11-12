@@ -397,3 +397,35 @@ h1 {
     pointer-events: none;
     z-index: 2;
 }
+
+.navigation-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.navigation-controls button {
+    padding: 8px 16px;
+    font-size: 16px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.navigation-controls button:hover {
+    background: #f0f0f0;
+}
+
+.move-row {
+    cursor: pointer;
+}
+
+.move-row:hover {
+    background: #f0f0f0;
+}
+
+.move-row.current {
+    background: #e6e6e6;
+}

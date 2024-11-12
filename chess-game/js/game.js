@@ -5,6 +5,9 @@ class ChessGame {
         this.moveHistory = [];
         this.capturedPieces = { white: [], black: [] };
         this.initializeBoard();
+        this.positionHistory = [];
+        this.currentMove = 0;
+        this.savePosition();
     }
 
     initializeBoard() {
@@ -147,38 +150,54 @@ class ChessGame {
     }
 
     makeMove(startPos, endPos) {
-        const [startRow, startCol] = startPos;
-        const [endRow, endCol] = endPos;
-
         if (!this.isValidMove(startPos, endPos)) {
             return false;
         }
-
-        const originalPiece = this.board[startRow][startCol];
+        
+        const [startRow, startCol] = startPos;
+        const [endRow, endCol] = endPos;
+    
+        // Store original state
+        const movingPiece = this.board[startRow][startCol];
         const capturedPiece = this.board[endRow][endCol];
-
-        this.board[endRow][endCol] = originalPiece;
+    
+        // Make the move
+        this.board[endRow][endCol] = movingPiece;
         this.board[startRow][startCol] = null;
-
-        //check check
+    
+        // Check if move puts/leaves king in check
         if (this.isInCheck(this.currentPlayer)) {
-            this.board[startRow][startCol] = originalPiece;
+            // Undo the move
+            this.board[startRow][startCol] = movingPiece;
             this.board[endRow][endCol] = capturedPiece;
             return false;
         }
-
+    
+        // Store captured piece
         if (capturedPiece) {
             this.capturedPieces[this.currentPlayer].push(capturedPiece);
         }
-
+    
+        // Handle move history
+        if (this.currentMove < this.moveHistory.length) {
+            // If we're not at the latest move, truncate future moves
+            this.moveHistory = this.moveHistory.slice(0, this.currentMove);
+            this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
+        }
+    
+        // Add new move to history
         this.moveHistory.push({
-            piece: originalPiece,
+            piece: movingPiece,
             from: startPos,
             to: endPos,
             captured: capturedPiece
         });
-
+    
+        // Update current move counter and save position
+        this.currentMove++;
         this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+        this.savePosition();
+    
         return true;
     }
 
@@ -213,4 +232,39 @@ class ChessGame {
         }
         return true;
     }
+
+    
+    savePosition() {
+        // Deep copy the current board
+        const boardCopy = this.board.map(row => 
+            row.map(piece => piece ? {...piece} : null)
+        );
+        this.positionHistory[this.currentMove] = {
+            board: boardCopy,
+            currentPlayer: this.currentPlayer,
+            capturedPieces: {
+                white: [...this.capturedPieces.white],
+                black: [...this.capturedPieces.black]
+            }
+        };
+    }
+
+    goToMove(moveNumber) {
+        if (moveNumber < 0 || moveNumber > this.positionHistory.length - 1) return false;
+    
+        const position = this.positionHistory[moveNumber];
+        this.board = position.board.map(row => 
+            row.map(piece => piece ? {...piece} : null)
+        );
+        this.currentPlayer = position.currentPlayer;
+        this.capturedPieces = {
+            white: [...position.capturedPieces.white],
+            black: [...position.capturedPieces.black]
+        };
+        this.currentMove = moveNumber;
+        
+        return true;
+    }
+
 }
+
