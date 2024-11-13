@@ -429,3 +429,44 @@ h1 {
 .move-row.current {
     background: #e6e6e6;
 }
+
+.move-row {
+    display: flex;
+    padding: 4px 8px;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.move-row:hover {
+    background-color: #f0f0f0;
+}
+
+.move-row.current {
+    background-color: #e3e3ff;
+}
+
+.move-number {
+    color: #666;
+    min-width: 24px;
+}
+
+.white-move, .black-move {
+    flex: 1;
+    padding: 0 4px;
+    border-radius: 2px;
+}
+
+.white-move:hover, .black-move:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#moves-list {
+    height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    font-family: monospace;
+}
+

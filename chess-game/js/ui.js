@@ -7,6 +7,7 @@ class ChessUI {
         this.createBoard();
         this.initializeHistory();
         this.createNavigationControls();
+        this.initializeKeyboardNavigation();
     }
 
     //chatgpt
@@ -61,39 +62,75 @@ class ChessUI {
     updateMoveHistory() {
         const historyContainer = document.getElementById('moves-list');
         if (!historyContainer) return;
-
+    
         historyContainer.innerHTML = '';
-
+    
+        // Group moves into pairs (white and black)
         for (let i = 0; i < this.game.moveHistory.length; i += 2) {
             const moveNumber = Math.floor(i / 2) + 1;
             const moveDiv = document.createElement('div');
             moveDiv.className = 'move-row';
-
-            // Convert positions to chess notation
+            
+            // Add current move highlighting
+            if (i < this.game.currentMove && i + 1 >= this.game.currentMove) {
+                moveDiv.classList.add('current');
+            }
+    
             const whiteMove = this.positionToNotation(
                 this.game.moveHistory[i].from,
                 this.game.moveHistory[i].to,
                 this.game.moveHistory[i].piece
             );
-
-            const blackMove = i + 1 < this.game.moveHistory.length ? 
-                this.positionToNotation(
+    
+            const whiteSpan = document.createElement('span');
+            whiteSpan.className = 'white-move';
+            whiteSpan.textContent = whiteMove;
+            whiteSpan.addEventListener('click', () => {
+                this.game.goToMove(i + 1);
+                this.selectedCell = null;
+                this.legalMoves = [];
+                this.updateBoard();
+                this.updateMoveHistory();
+            });
+    
+            let blackSpan = null;
+            if (i + 1 < this.game.moveHistory.length) {
+                const blackMove = this.positionToNotation(
                     this.game.moveHistory[i + 1].from,
                     this.game.moveHistory[i + 1].to,
                     this.game.moveHistory[i + 1].piece
-                ) : '';
-
-            moveDiv.innerHTML = `
-                <span class="move-number">${moveNumber}.</span>
-                <span class="white-move">${whiteMove}</span>
-                ${blackMove ? `<span class="black-move">${blackMove}</span>` : ''}
-            `;
-
+                );
+                
+                blackSpan = document.createElement('span');
+                blackSpan.className = 'black-move';
+                blackSpan.textContent = blackMove;
+                blackSpan.addEventListener('click', () => {
+                    this.game.goToMove(i + 2);
+                    this.selectedCell = null;
+                    this.legalMoves = [];
+                    this.updateBoard();
+                    this.updateMoveHistory();
+                });
+            }
+    
+            const numberSpan = document.createElement('span');
+            numberSpan.className = 'move-number';
+            numberSpan.textContent = `${moveNumber}.`;
+    
+            moveDiv.appendChild(numberSpan);
+            moveDiv.appendChild(whiteSpan);
+            if (blackSpan) {
+                moveDiv.appendChild(blackSpan);
+            }
+    
             historyContainer.appendChild(moveDiv);
         }
-
-        //scroll runter
-        historyContainer.scrollTop = historyContainer.scrollHeight;
+    
+        // Scroll to current move
+        const currentMove = historyContainer.querySelector('.current');
+        if (currentMove) {
+            currentMove.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     positionToNotation(from, to, piece) {
@@ -297,5 +334,26 @@ class ChessUI {
             this.updateBoard();
             this.updateMoveHistory();
         }
+    }
+
+    initializeKeyboardNavigation() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                    this.navigateMove('prev');
+                    break;
+                case 'ArrowRight':
+                    this.navigateMove('next');
+                    break;
+                case 'Home':
+                    this.navigateMove('start');
+                    break;
+                case 'End':
+                    this.navigateMove('end');
+                    break;
+            }
+        });
     }
 }
