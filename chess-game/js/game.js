@@ -71,8 +71,10 @@ class ChessGame {
                        this.isValidDiagonalMove(startPos, endPos);
 
             case 'k': //king
-                return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
-        }
+                if (this.canCastle(startPos, endPos)) {
+                    return true;
+                }
+            return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;        }
         return false;
     }
 
@@ -150,54 +152,79 @@ class ChessGame {
     }
 
     makeMove(startPos, endPos) {
+        const [startRow, startCol] = startPos;
+        const [endRow, endCol] = endPos;
+        const piece = this.board[startRow][startCol];
+    
         if (!this.isValidMove(startPos, endPos)) {
             return false;
         }
-        
-        const [startRow, startCol] = startPos;
-        const [endRow, endCol] = endPos;
     
-        // Store original state
-        const movingPiece = this.board[startRow][startCol];
+        // Handle castling
+        if (piece.type === 'k' && Math.abs(endCol - startCol) === 2) {
+            const rookCol = endCol > startCol ? 7 : 0;
+            const newRookCol = endCol > startCol ? endCol - 1 : endCol + 1;
+            const rook = this.board[startRow][rookCol];
+            
+            // Move rook
+            this.board[startRow][newRookCol] = rook;
+            this.board[startRow][rookCol] = null;
+            rook.hasMoved = true;
+        }
+    
+        // Store state
         const capturedPiece = this.board[endRow][endCol];
-    
+        
         // Make the move
-        this.board[endRow][endCol] = movingPiece;
+        this.board[endRow][endCol] = piece;
         this.board[startRow][startCol] = null;
+        piece.hasMoved = true;
     
         // Check if move puts/leaves king in check
         if (this.isInCheck(this.currentPlayer)) {
             // Undo the move
-            this.board[startRow][startCol] = movingPiece;
+            this.board[startRow][startCol] = piece;
             this.board[endRow][endCol] = capturedPiece;
+            piece.hasMoved = false;
             return false;
         }
     
-        // Store captured piece
+        // Handle pawn promotion
+        if (piece.type === 'p' && (endRow === 7 || endRow === 0)) {
+            return {
+                needsPromotion: true,
+                callback: (promotionPiece) => {
+                    this.board[endRow][endCol] = {
+                        type: promotionPiece,
+                        color: piece.color,
+                        hasMoved: true
+                    };
+                    this.finishMove(startPos, endPos, piece, capturedPiece);
+                }
+            };
+        }
+    
+        return this.finishMove(startPos, endPos, piece, capturedPiece);
+    }
+    
+    finishMove(startPos, endPos, piece, capturedPiece) {
         if (capturedPiece) {
             this.capturedPieces[this.currentPlayer].push(capturedPiece);
         }
     
-        // Handle move history
-        if (this.currentMove < this.moveHistory.length) {
-            // If we're not at the latest move, truncate future moves
-            this.moveHistory = this.moveHistory.slice(0, this.currentMove);
-            this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
-        }
+        this.moveHistory = this.moveHistory.slice(0, this.currentMove);
+        this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
     
-        // Add new move to history
         this.moveHistory.push({
-            piece: movingPiece,
+            piece: piece,
             from: startPos,
             to: endPos,
             captured: capturedPiece
         });
     
-        // Update current move counter and save position
-        this.currentMove++;
         this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+        this.currentMove++;
         this.savePosition();
-    
         return true;
     }
 
@@ -264,6 +291,64 @@ class ChessGame {
         this.currentMove = moveNumber;
         
         return true;
+    }
+
+    canCastle(startPos, endPos) {
+        const [startRow, startCol] = startPos;
+        const [endRow, endCol] = endPos;
+        const piece = this.board[startRow][startCol];
+        
+        // Must be king's first move
+        if (piece.type !== 'k' || piece.hasMoved) return false;
+        
+        // Must be a two-square horizontal move
+        if (startRow !== endRow || Math.abs(endCol - startCol) !== 2) return false;
+        
+        const rookCol = endCol > startCol ? 7 : 0;
+        const rook = this.board[startRow][rookCol];
+        
+        // Check if rook exists and hasn't moved
+        if (!rook || rook.type !== 'r' || rook.hasMoved) return false;
+        
+        // Check if path is clear
+        const direction = Math.sign(endCol - startCol);
+        let currentCol = startCol + direction;
+        const endRookCol = direction > 0 ? endCol - 1 : endCol + 1;
+        
+        while (currentCol !== endRookCol) {
+            if (this.board[startRow][currentCol]) return false;
+            currentCol += direction;
+        }
+        
+        // Check if king passes through check
+        let checkCol = startCol;
+        while (checkCol !== endCol) {
+            if (this.isSquareUnderAttack([startRow, checkCol], piece.color)) return false;
+            checkCol += direction;
+        }
+        
+        return true;
+    }
+    
+    isSquareUnderAttack(pos, color) {
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        const originalCurrentPlayer = this.currentPlayer;
+        this.currentPlayer = opponentColor;
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.board[row][col];
+                if (piece && piece.color === opponentColor) {
+                    if (this.isValidMove([row, col], pos)) {
+                        this.currentPlayer = originalCurrentPlayer;
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        this.currentPlayer = originalCurrentPlayer;
+        return false;
     }
 
 }

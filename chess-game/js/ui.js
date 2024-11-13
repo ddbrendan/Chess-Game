@@ -247,12 +247,22 @@ class ChessUI {
                 this.updateBoard();
             }
         } else {
-            const moveSuccess = this.game.makeMove(this.selectedCell, [row, col]);
-            this.selectedCell = null;
-            this.legalMoves = [];
-            this.updateBoard();
-
-            if (moveSuccess) {
+            const moveResult = this.game.makeMove(this.selectedCell, [row, col]);
+            
+            if (moveResult && moveResult.needsPromotion) {
+                this.showPromotionDialog(this.game.currentPlayer, (promotionPiece) => {
+                    moveResult.callback(promotionPiece);
+                    this.updateBoard();
+                    this.updateMoveHistory();
+                    if (this.game.isCheckmate()) {
+                        const winner = this.game.currentPlayer === 'white' ? 'Black' : 'White';
+                        this.showGameOverMessage(`Checkmate! ${winner} wins!`);
+                    } else if (this.game.isInCheck(this.game.currentPlayer)) {
+                        this.showCheckMessage();
+                    }
+                });
+            } else if (moveResult) {
+                this.updateBoard();
                 this.updateMoveHistory();
                 if (this.game.isCheckmate()) {
                     const winner = this.game.currentPlayer === 'white' ? 'Black' : 'White';
@@ -261,6 +271,10 @@ class ChessUI {
                     this.showCheckMessage();
                 }
             }
+            
+            this.selectedCell = null;
+            this.legalMoves = [];
+            this.updateBoard();
         }
     }
 
@@ -355,5 +369,34 @@ class ChessUI {
                     break;
             }
         });
+    }
+
+    showPromotionDialog(color, callback) {
+        const modal = document.createElement('div');
+        modal.className = 'promotion-modal';
+        
+        const pieces = ['q', 'r', 'b', 'n'];
+        const container = document.createElement('div');
+        container.className = 'promotion-pieces';
+        
+        pieces.forEach(pieceType => {
+            const pieceDiv = document.createElement('div');
+            pieceDiv.className = 'promotion-piece';
+            
+            const img = document.createElement('img');
+            img.src = `images/${color}-${pieceType}.png`;
+            img.alt = pieceType;
+            
+            pieceDiv.appendChild(img);
+            pieceDiv.addEventListener('click', () => {
+                callback(pieceType);
+                modal.remove();
+            });
+            
+            container.appendChild(pieceDiv);
+        });
+        
+        modal.appendChild(container);
+        document.body.appendChild(modal);
     }
 }
